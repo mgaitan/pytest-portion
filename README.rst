@@ -22,7 +22,7 @@ Use case
 --------
 
 Suppose you have a big, slow test suite, but you can trigger several CI workers
-to run different portions of it, in a sake lazy/simple way to make it
+to run different portions of it, in a sake lazy/simple way to parallelize it. 
 
 A basic, obvious way to do that is to explictily
 collect from different directories/modules
