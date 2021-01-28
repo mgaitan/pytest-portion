@@ -22,7 +22,7 @@ Use case
 --------
 
 Suppose you have a big, slow test suite, but you can trigger several CI workers
-to run different portions of it, in a sake lazy/simple way to make it
+to run different portions of it, in a sake lazy/simple way to parallelize it.
 
 A basic, obvious way to do that is to explictily
 collect from different directories/modules
@@ -107,7 +107,6 @@ Acknowledgements
 
 - Thanks to ShipHero_ for give me some time to develop this.
 - I used `cookiecutter`_ along with `@hackebrot`_'s `cookiecutter-pytest-plugin`_ template for the boilerplate code of this package. Thanks!
-
 
 .. _`ShipHero`: https://www.shiphero.com
 .. _`cookiecutter`: https://github.com/audreyr/cookiecutter
