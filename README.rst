@@ -27,23 +27,31 @@ to run different portions of it, in a sake lazy/simple way to make it
 A basic, obvious way to do that is to explictily
 collect from different directories/modules
 
-- worker1: ``pytest tests/a``
-- worker2: ``pytest tests/b``
-- worker3: ``pytest tests/c tests/d``
+- worker1: ``pytest tests/a``    (100 tests, ~4 minutes to finish)
+- worker2: ``pytest tests/b``    (20 tests, ~1 minute to finish)
+- worker3: ``pytest tests/c tests/d``  (30 tests, ~1 minute to finish)
 
 The problem is that directory `tests/a` may have a lot more tests that `tests/c` plus `test/d`,
-so ``worker1`` takes, let say, 5 times more than ``worker3`` to finish.
+so ``worker1`` takes a lot more to finish.
 
 With ``pytest-portion`` you can still split the tests in different instances, but letting
 the extension makes the selection in a more balanced way.
 
-
-- worker1: ``pytest --portion 1/3 tests``
-- worker2: ``pytest --portion 2/3 tests``
-- worker3: ``pytest --portion 3/3 tests``
+- worker1: ``pytest --portion 1/3 tests``   (50 tests, ~2 minutes)
+- worker2: ``pytest --portion 2/3 tests``   (50 tests, ~2 minutes)
+- worker3: ``pytest --portion 3/3 tests``   (50 tests, ~2 minutes)
 
 In this case, the tests of all the directories are collected, but only a third (a different one!) of them will
 be actually executed on each worker.
+
+Note this balance if **by number of tests**, so if there is very slow tests in a particular portion,
+the duration may not be expected.
+
+For a fine tuning, you could pass the portion in a more explicit way:
+
+- worker1: ``pytest --portion 0:0.5 tests``    (first half, 1st to 75th test)
+- worker2: ``pytest --portion 0.5:0.8 tests``  (next 30%, from 76th to 125º)
+- worker3: ``pytest --portion 0.8:1 tests``    (last 20%)
 
 
 Installation
@@ -69,6 +77,13 @@ Pass ``--portion <i/n>`` where:
     and `--portion 2/2` the last 2.
 
 
+
+Alternatively ``--portion start:end`` where:
+
+- ``start`` and ``end`` are the coefficient (between 0 and 1) that represent the segment of the collected tests
+to select.
+
+
 Contributing
 ------------
 Contributions are very welcome. Please ensure the coverage at least stays
@@ -86,12 +101,16 @@ Issues
 If you encounter any problems, please `file an issue`_ along with a detailed description.
 
 
-----
+Acknowledgements
+----------------
 
-This `pytest`_ plugin was generated with `Cookiecutter`_ along with `@hackebrot`_'s `cookiecutter-pytest-plugin`_ template.
+
+- Thanks to ShipHero_ for give me some time to develop this.
+- I used `cookiecutter`_ along with `@hackebrot`_'s `cookiecutter-pytest-plugin`_ template for the boilerplate code of this package. Thanks!
 
 
-.. _`Cookiecutter`: https://github.com/audreyr/cookiecutter
+.. _`ShipHero`: https://www.shiphero.com
+.. _`cookiecutter`: https://github.com/audreyr/cookiecutter
 .. _`@hackebrot`: https://github.com/hackebrot
 .. _`MIT`: http://opensource.org/licenses/MIT
 .. _`BSD-3`: http://opensource.org/licenses/BSD-3-Clause

@@ -4,7 +4,7 @@
 def pytest_addoption(parser):
     group = parser.getgroup("portion")
     group.addoption(
-        "--portion", action="store", help='Select a part of all the collected tests in the form "i/n" (1 <= i <= n)'
+        "--portion", action="store", help='Select a part of all the collected tests in the form "i/n" or "start:end"'
     )
 
 
@@ -32,22 +32,48 @@ def slice_fraction(sequence, i, n):
     return sequence[slice(*portion)]
 
 
+def slice_percentage_range(sequence, start, end):
+    """
+    return the slice range between coefficient `start` and `end`
+    where start and end represents fractions between 0 and 1.
+
+    Corner elements may be repeated in consecutive slices.
+    """
+    total = len(sequence)
+    return slice(int(round(total * start)), int(total * end) + 1)
+
+
 def pytest_collection_modifyitems(config, items):
     try:
         portion = config.getoption("portion") or config.getini("portion")
     except ValueError:
         portion = None
 
+    deselected = []
     if not portion:
         return
 
-    i, n = [int(n) for n in portion.split("/")]
+    elif "/" in portion:
 
-    selected = slice_fraction(items, i, n)
-    for range_number in range(1, n + 1):
-        if range_number == i:
-            continue
+        i, n = [int(n) for n in portion.split("/")]
 
-        deselected = slice_fraction(items, range_number, n)
-        config.hook.pytest_deselected(items=deselected)
+        selected = slice_fraction(items, i, n)
+        for range_number in range(1, n + 1):
+            if range_number == i:
+                continue
+
+            deselected.extend(slice_fraction(items, range_number, n))
+    elif ":" in portion:
+        start, end = [float(n) for n in portion.split(":")]
+
+        slice_selected = slice_percentage_range(items, start, end)
+        selected = items[slice_selected]
+        deselected.extend(items[:slice_selected.start])
+        deselected.extend(items[slice_selected.stop:])
+
     items[:] = selected
+    config.hook.pytest_deselected(items=deselected)
+
+
+
+
