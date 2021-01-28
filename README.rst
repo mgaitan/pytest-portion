@@ -27,20 +27,20 @@ to run different portions of it, in a sake lazy/simple way to make it
 A basic, obvious way to do that is to explictily
 collect from different directories/modules
 
-- worker1: `pytest tests/a`
-- worker2: `pytest tests/b`
-- worker3: `pytest tests/c tests/d`
+- worker1: ``pytest tests/a``
+- worker2: ``pytest tests/b``
+- worker3: ``pytest tests/c tests/d``
 
 The problem is that directory `tests/a` may have a lot more tests that `tests/c` plus `test/d`,
-so `worker1` takes, let say, 5 times more than `worker3` to finish.
+so ``worker1`` takes, let say, 5 times more than ``worker3`` to finish.
 
-With `pytest-portion` you can still split the tests in different instances, but letting
-the extension make the selection in a more balanced way.
+With ``pytest-portion`` you can still split the tests in different instances, but letting
+the extension makes the selection in a more balanced way.
 
 
-- worker1: `pytest --portion 1/3 tests`
-- worker2: `pytest --portion 2/3 tests`
-- worker3: `pytest --portion 3/3 tests`
+- worker1: ``pytest --portion 1/3 tests``
+- worker2: ``pytest --portion 2/3 tests``
+- worker3: ``pytest --portion 3/3 tests``
 
 In this case, the tests of all the directories are collected, but only a third (a different one!) of them will
 be actually executed on each worker.
@@ -57,10 +57,10 @@ You can install "pytest-portion" via `pip`_ from `PyPI`_::
 Usage
 -----
 
-Pass `--portion <i/n>` where:
+Pass ``--portion <i/n>`` where:
 
-- `n` is the number of portions
-- `i` is the i-th portion to select (`1 <= i <= n`)
+- ``n`` is the number of portions
+- ``i`` is the i-th portion to select (``1 <= i <= n``)
 
 .. note::
 
