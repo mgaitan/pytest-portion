@@ -44,7 +44,7 @@ the extension makes the selection in a more balanced way.
 In this case, the tests of all the directories are collected, but only a third (a different one!) of them will
 be actually executed on each worker.
 
-Note this balance if **by number of tests**, so if there is very slow tests in a particular portion,
+Note this balance is **by number of tests**, so if there is very slow tests in a particular portion,
 the duration may not be expected.
 
 For a fine tuning, you could pass the portion in a more explicit way:
