@@ -77,11 +77,10 @@ Pass ``--portion <i/n>`` where:
     and `--portion 2/2` the last 2.
 
 
-
 Alternatively ``--portion start:end`` where:
 
 - ``start`` and ``end`` are the coefficient (between 0 and 1) that represent the segment of the collected tests
-to select.
+  to select.
 
 
 Contributing
