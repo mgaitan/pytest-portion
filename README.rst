@@ -10,7 +10,7 @@ pytest-portion
     :target: https://pypi.org/project/pytest-portion
     :alt: Python versions
 
-.. image:: https://travis-ci.org/mgaitan/pytest-portion.svg?branch=master
+.. image:: https://travis-ci.org/mgaitan/pytest-portion.svg?branch=main
     :target: https://travis-ci.org/mgaitan/pytest-portion
     :alt: See Build Status on Travis CI
 
