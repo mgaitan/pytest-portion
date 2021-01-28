@@ -37,9 +37,9 @@ so ``worker1`` takes a lot more to finish.
 With ``pytest-portion`` you can still split the tests in different instances, but letting
 the extension makes the selection in a more balanced way.
 
-- worker1: ``pytest --portion 1/3 tests``   (50 tests, ~2 minutes)
-- worker2: ``pytest --portion 2/3 tests``   (50 tests, ~2 minutes)
-- worker3: ``pytest --portion 3/3 tests``   (50 tests, ~2 minutes)
+- worker1: ``pytest --portion 1/3 tests``   (first 50 tests, ~2 minutes)
+- worker2: ``pytest --portion 2/3 tests``   (next 50 tests, ~2 minutes)
+- worker3: ``pytest --portion 3/3 tests``   (last 50 tests, ~2 minutes)
 
 In this case, the tests of all the directories are collected, but only a third (a different one!) of them will
 be actually executed on each worker.
