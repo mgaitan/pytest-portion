@@ -86,12 +86,16 @@ Issues
 If you encounter any problems, please `file an issue`_ along with a detailed description.
 
 
-----
+Acknowledgements
+----------------
 
-This `pytest`_ plugin was generated with `Cookiecutter`_ along with `@hackebrot`_'s `cookiecutter-pytest-plugin`_ template.
+
+- Thanks to ShipHero_ for give me some time to develop this.
+- I used `cookiecutter`_ along with `@hackebrot`_'s `cookiecutter-pytest-plugin`_ template for the boilerplate code of this package. Thanks!
 
 
-.. _`Cookiecutter`: https://github.com/audreyr/cookiecutter
+.. _`ShipHero`: https://www.shiphero.com
+.. _`cookiecutter`: https://github.com/audreyr/cookiecutter
 .. _`@hackebrot`: https://github.com/hackebrot
 .. _`MIT`: http://opensource.org/licenses/MIT
 .. _`BSD-3`: http://opensource.org/licenses/BSD-3-Clause
