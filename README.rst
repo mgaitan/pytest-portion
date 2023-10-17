@@ -15,8 +15,8 @@ pytest-portion
     :alt: See Build Status on Travis CI
 
 
-Select a portion of the collected tests, so you can run diferents parts of your test suite
-in differents instances to balance the number of test run on each one.
+Select a portion of the collected tests, so you can run differents parts of your test suite
+in differents instances to scale horizontally.
 
 Use case
 --------
