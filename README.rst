@@ -14,9 +14,8 @@ pytest-portion
     :target: https://travis-ci.org/mgaitan/pytest-portion
     :alt: See Build Status on Travis CI
 
-
-Select a portion of the collected tests, so you can run differents parts of your test suite
-in differents instances to scale horizontally.
+Select a portion of the collected tests, so you can run different parts of your test suite
+in different instances to scale horizontally.
 
 Use case
 --------
@@ -65,10 +64,16 @@ You can install "pytest-portion" via `pip`_ from `PyPI`_::
 Usage
 -----
 
+There are two modes of operation: **Test-level** (default) and **File-level**.
+
+1. Test-level Slicing (Default)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pytest collects all tests first, then ``pytest-portion`` filters them.
+
 Pass ``--portion <i/n>`` where:
 
-- ``n`` is the number of portions
-- ``i`` is the i-th portion to select (``1 <= i <= n``)
+- ``n`` is the total number of portions.
+- ``i`` is the i-th portion to select (``1 <= i <= n``).
 
 .. note::
 
@@ -76,12 +81,18 @@ Pass ``--portion <i/n>`` where:
     For instance, if you have `test_1`, `test_2` and `test_3`, `--portion 1/2` will run the first one,
     and `--portion 2/2` the last 2.
 
+Alternatively, use ``--portion start:end`` where ``start`` and ``end`` are coefficients between 0 and 1.
 
+2. File-level Slicing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For very large projects, collection itself can be slow. Use ``--portion-files`` to slice the list of
+discovered files **before** pytest starts collecting tests from within them. This can significantly
+reduce collection time in large repositories.
 
-Alternatively ``--portion start:end`` where:
+.. code-block:: bash
 
-- ``start`` and ``end`` are the coefficient (between 0 and 1) that represent the segment of the collected tests
-to select.
+    # Collect and run only the files belonging to the first half of the suite
+    pytest --portion 1/2 --portion-files tests/
 
 
 Contributing
