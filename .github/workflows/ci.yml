@@ -9,7 +9,6 @@ on:
 
 jobs:
   qa:
-    needs: workflows-lint
     runs-on: ubuntu-latest
     env:
       UV_PYTHON: "3.13"
