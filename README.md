@@ -1,8 +1,11 @@
 # pytest-portion
 
+[![CI](https://github.com/mgaitan/pytest-portion/actions/workflows/ci.yml/badge.svg)](https://github.com/mgaitan/pytest-portion/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/pytest-portion.svg)](https://pypi.org/project/pytest-portion)
 [![Python versions](https://img.shields.io/pypi/pyversions/pytest-portion.svg)](https://pypi.org/project/pytest-portion)
-[![See Build Status on Travis CI](https://travis-ci.org/mgaitan/pytest-portion.svg?branch=main)](https://travis-ci.org/mgaitan/pytest-portion)
+[![Changelog](https://img.shields.io/github/v/release/mgaitan/pytest-portion?include_prereleases&label=changelog)](https://github.com/mgaitan/pytest-portion/releases)
+[![docs](https://img.shields.io/badge/docs-blue.svg?style=flat)](https://mgaitan.github.io/pytest-portion/)
+
 
 Select a portion of the collected tests, so you can run different parts of your test suite
 in different instances to scale horizontally.
