@@ -47,4 +47,10 @@ packages = ["pytest_portion.py"]
 [dependency-groups]
 dev = [
     "ruff>=0.14.9",
+    "ty",
+    "ipdb"
+]
+docs = [
+    "sphinx>=8",
+    "sphinxcontrib-mermaid>=1.0.0",
 ]
