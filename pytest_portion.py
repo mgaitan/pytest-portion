@@ -20,17 +20,17 @@ def pytest_addoption(parser):
         help="Portion the discovered files instead of individual tests to accelerate collection.",
     )
     group.addoption(
-        "--portion-per-name",
+        "--portion-functions",
         action="store_true",
         default=False,
-        help="When portioning, split within each test name (e.g. test_compare1, test_compare2) so each name contributes proportionally to the selected set.",
+        help="When portioning, split within each test function so each function contributes proportionally to the selected set.",
     )
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    if config.getoption("--portion-files") and config.getoption("--portion-per-name"):
+    if config.getoption("--portion-files") and config.getoption("--portion-functions"):
         raise pytest.UsageError(
-            "Cannot use --portion-files and --portion-per-name together; choose one."
+            "Cannot use --portion-files and --portion-functions together; choose one."
         )
 
 
@@ -173,7 +173,7 @@ def pytest_collection_modifyitems(config, items):
     if not portion:
         return
 
-    if config.getoption("--portion-per-name"):
+    if config.getoption("--portion-functions"):
         # Group by base test identity (e.g. test_compare1 vs test_compare2)
         groups = {}
         for item in items:

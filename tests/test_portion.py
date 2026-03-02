@@ -72,13 +72,13 @@ def test_select_fraction(testdir, portion, selected, expected):
     assert expected in result.outlines[-1]
 
 
-def test_portion_files_and_per_name_mutually_exclusive(pytester):
-    """--portion-files and --portion-per-name cannot be used together."""
+def test_portion_files_and_functions_mutually_exclusive(pytester):
+    """--portion-files and --portion-functions cannot be used together."""
     pytester.makepyfile("def test_foo(): pass")
-    result = pytester.runpytest("--portion", "1/2", "--portion-files", "--portion-per-name")
+    result = pytester.runpytest("--portion", "1/2", "--portion-files", "--portion-functions")
     assert result.ret != 0
     combined = result.stdout.str() + result.stderr.str()
-    assert "Cannot use --portion-files and --portion-per-name together" in combined
+    assert "Cannot use --portion-files and --portion-functions together" in combined
 
 
 def test_portion_files(pytester):
@@ -102,8 +102,8 @@ def test_portion_files(pytester):
 
 
 @pytest.mark.parametrize("portion", ["1/2", "2/2"])
-def test_portion_per_name(testdir, portion):
-    """With --portion-per-name, each test name gets portioned separately so 1/2 gives half from test_compare1 and half from test_compare2."""
+def test_portion_functions(testdir, portion):
+    """With --portion-functions, each test function gets portioned separately so 1/2 gives half from test_compare1 and half from test_compare2."""
     testdir.makepyfile(
         """
         import pytest
@@ -118,7 +118,7 @@ def test_portion_per_name(testdir, portion):
         """
     )
     # 1/2: should get 2 test_gemm + 2 test_gemm_schedule = 4 items
-    result = testdir.runpytest("-v", "--portion", portion, "--portion-per-name")
+    result = testdir.runpytest("-v", "--portion", portion, "--portion-functions")
     result.stdout.fnmatch_lines("*collected 9 items*")
     # First portion: first half of test_gemm (2) and first half of test_gemm_schedule (2)
     out = result.stdout.str()
