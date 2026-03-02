@@ -60,7 +60,7 @@ pip install pytest-portion
 
 ## Usage
 
-There are two modes of operation: **Test-level** (default) and **File-level**.
+There are three modes of operation: **Test-level** (default), **File-level**, and **Per-name**. **Note:** `--portion-files` and `--portion-per-name` cannot be used together.
 
 ### 1. Test-level Slicing (Default)
 
@@ -87,6 +87,17 @@ reduce collection time in large repositories.
 ```bash
 # Collect and run only the files belonging to the first half of the suite
 pytest --portion 1/2 --portion-files tests/
+```
+
+### 3. Per-name Slicing
+
+When many parametrized tests ex (e.g. `test_compare1[...]`, `test_compare2[...]`), the default splits the **entire** list of test cases. So `--portion 1/2` might run only `test_compare1` cases and `--portion 2/2` only `test_compare2`, which can unbalance workers.
+
+Use `--portion-per-name` to split **within each test name**: each test function contributes proportionally to the selected set.
+
+```bash
+# Half from test_compare1 and half from test_compare2
+pytest --portion 1/2 --portion-per-name tests/
 ```
 
 ## Contributing

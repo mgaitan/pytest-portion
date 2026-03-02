@@ -19,6 +19,19 @@ def pytest_addoption(parser):
         default=False,
         help="Portion the discovered files instead of individual tests to accelerate collection.",
     )
+    group.addoption(
+        "--portion-per-name",
+        action="store_true",
+        default=False,
+        help="When portioning, split within each test name (e.g. test_compare1, test_compare2) so each name contributes proportionally to the selected set.",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    if config.getoption("--portion-files") and config.getoption("--portion-per-name"):
+        raise pytest.UsageError(
+            "Cannot use --portion-files and --portion-per-name together; choose one."
+        )
 
 
 def slice_fraction(sequence, i, n):
@@ -54,6 +67,12 @@ def slice_percentage_range(sequence, start, end):
     """
     total = len(sequence)
     return slice(int(round(total * start)), int(total * end) + 1)
+
+
+def _item_base_key(item: pytest.Item) -> str:
+    """Return the test identity without parametrize part, e.g. 'file.py::test_gemm'."""
+    nodeid = item.nodeid
+    return nodeid.split("[", 1)[0] if "[" in nodeid else nodeid
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -123,6 +142,24 @@ def pytest_ignore_collect(collection_path: pathlib.Path, config: pytest.Config):
         return not is_parent_of_allowed
 
 
+def _portion_items(items, portion: str):
+    """Apply portion string to a list of items; returns (selected, deselected)."""
+    deselected = []
+    if "/" in portion:
+        i, n = [int(x) for x in portion.split("/")]
+        selected = slice_fraction(items, i, n)
+        for range_number in range(1, n + 1):
+            if range_number != i:
+                deselected.extend(slice_fraction(items, range_number, n))
+    else:  # ":" in portion
+        start, end = [float(x) for x in portion.split(":")]
+        slice_selected = slice_percentage_range(items, start, end)
+        selected = items[slice_selected]
+        deselected.extend(items[: slice_selected.start])
+        deselected.extend(items[slice_selected.stop :])
+    return selected, deselected
+
+
 def pytest_collection_modifyitems(config, items):
     # Do not ignore tests if we already ignored the files
     if config.getoption("--portion-files"):
@@ -133,26 +170,26 @@ def pytest_collection_modifyitems(config, items):
     except ValueError:
         portion = None
 
-    deselected = []
     if not portion:
         return
 
-    elif "/" in portion:
-        i, n = [int(n) for n in portion.split("/")]
+    if config.getoption("--portion-per-name"):
+        # Group by base test identity (e.g. test_compare1 vs test_compare2)
+        groups = {}
+        for item in items:
+            key = _item_base_key(item)
+            groups.setdefault(key, []).append(item)
+        selected = []
+        deselected = []
+        for key in sorted(groups.keys()):
+            group_items = groups[key]
+            sel, des = _portion_items(group_items, portion)
+            selected.extend(sel)
+            deselected.extend(des)
+        items[:] = selected
+        config.hook.pytest_deselected(items=deselected)
+        return
 
-        selected = slice_fraction(items, i, n)
-        for range_number in range(1, n + 1):
-            if range_number == i:
-                continue
-
-            deselected.extend(slice_fraction(items, range_number, n))
-    elif ":" in portion:
-        start, end = [float(n) for n in portion.split(":")]
-
-        slice_selected = slice_percentage_range(items, start, end)
-        selected = items[slice_selected]
-        deselected.extend(items[: slice_selected.start])
-        deselected.extend(items[slice_selected.stop :])
-
+    selected, deselected = _portion_items(items, portion)
     items[:] = selected
     config.hook.pytest_deselected(items=deselected)

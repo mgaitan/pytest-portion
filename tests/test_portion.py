@@ -72,6 +72,15 @@ def test_select_fraction(testdir, portion, selected, expected):
     assert expected in result.outlines[-1]
 
 
+def test_portion_files_and_per_name_mutually_exclusive(pytester):
+    """--portion-files and --portion-per-name cannot be used together."""
+    pytester.makepyfile("def test_foo(): pass")
+    result = pytester.runpytest("--portion", "1/2", "--portion-files", "--portion-per-name")
+    assert result.ret != 0
+    combined = result.stdout.str() + result.stderr.str()
+    assert "Cannot use --portion-files and --portion-per-name together" in combined
+
+
 def test_portion_files(pytester):
     files = {}
     for i in range(10):
@@ -90,6 +99,39 @@ def test_portion_files(pytester):
         "We expect to collect 10 items because we want to collect the 5 of 10 files and each file has 2 tests. "
         "5 * 2 = 10 tests"
     )
+
+
+@pytest.mark.parametrize("portion", ["1/2", "2/2"])
+def test_portion_per_name(testdir, portion):
+    """With --portion-per-name, each test name gets portioned separately so 1/2 gives half from test_compare1 and half from test_compare2."""
+    testdir.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.parametrize("x", [1, 2, 3, 4])
+        def test_compare1(x):
+            assert x >= 1
+
+        @pytest.mark.parametrize("x", [10, 20, 30, 40, 50])
+        def test_compare2(x):
+            assert x >= 10
+        """
+    )
+    # 1/2: should get 2 test_gemm + 2 test_gemm_schedule = 4 items
+    result = testdir.runpytest("-v", "--portion", portion, "--portion-per-name")
+    result.stdout.fnmatch_lines("*collected 9 items*")
+    # First portion: first half of test_gemm (2) and first half of test_gemm_schedule (2)
+    out = result.stdout.str()
+    if portion == "1/2":
+        assert "test_compare1[1]" in out and "test_compare1[2]" in out
+        assert "test_compare2[10]" in out and "test_compare2[20]" in out
+        assert "4 passed" in result.outlines[-1]
+        assert "5 deselected" in result.outlines[-1]
+    else:
+        assert "test_compare1[3]" in out and "test_compare1[4]" in out
+        assert "test_compare2[30]" in out and "test_compare2[40]" in out and "test_compare2[50]" in out
+        assert "5 passed" in result.outlines[-1]
+        assert "4 deselected" in result.outlines[-1]
 
 
 def test_portion_files_run_all_tests(pytester):
