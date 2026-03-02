@@ -75,7 +75,9 @@ def test_select_fraction(testdir, portion, selected, expected):
 def test_portion_files_and_functions_mutually_exclusive(pytester):
     """--portion-files and --portion-functions cannot be used together."""
     pytester.makepyfile("def test_foo(): pass")
-    result = pytester.runpytest("--portion", "1/2", "--portion-files", "--portion-functions")
+    result = pytester.runpytest(
+        "--portion", "1/2", "--portion-files", "--portion-functions"
+    )
     assert result.ret != 0
     combined = result.stdout.str() + result.stderr.str()
     assert "Cannot use --portion-files and --portion-functions together" in combined
@@ -129,7 +131,11 @@ def test_portion_functions(testdir, portion):
         assert "5 deselected" in result.outlines[-1]
     else:
         assert "test_compare1[3]" in out and "test_compare1[4]" in out
-        assert "test_compare2[30]" in out and "test_compare2[40]" in out and "test_compare2[50]" in out
+        assert (
+            "test_compare2[30]" in out
+            and "test_compare2[40]" in out
+            and "test_compare2[50]" in out
+        )
         assert "5 passed" in result.outlines[-1]
         assert "4 deselected" in result.outlines[-1]
 
