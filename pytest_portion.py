@@ -1,3 +1,4 @@
+import itertools
 import pathlib
 
 import pytest
@@ -233,17 +234,22 @@ def pytest_collection_modifyitems(config, items):
             int(portion.split("/")[1]) if (portion and "/" in portion) else None
         )
         # All groups with len < n: assign items globally in round-robin 1,2,...,n
-        small_offset = 0
-        small_offsets = {}
-        for key in sorted(groups.keys()):
-            group_items = groups[key]
-            is_small = n_portions and len(group_items) < n_portions
-            small_offsets[key] = small_offset if is_small else None
-            if is_small:
-                small_offset += len(group_items)
+        sorted_keys = sorted(groups.keys())
+        lengths = [len(groups[k]) for k in sorted_keys]
+        is_small = [n_portions and L < n_portions for L in lengths]
+        small_lengths = [L for L, s in zip(lengths, is_small) if s]
+        cumsum = [0] + list(itertools.accumulate(small_lengths))
+        num_small_before = list(
+            itertools.accumulate([1 if s else 0 for s in is_small], initial=0)
+        )[:-1]
+        small_offsets = {
+            key: cumsum[num_small_before[i]] if is_small[i] else None
+            for i, key in enumerate(sorted_keys)
+        }
+        # Assign items to portions
         selected = []
         deselected = []
-        for group_index, key in enumerate(sorted(groups.keys())):
+        for group_index, key in enumerate(sorted_keys):
             group_items = groups[key]
             sel, des = _portion_items(
                 group_items,
