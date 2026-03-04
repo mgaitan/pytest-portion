@@ -1,3 +1,4 @@
+import itertools
 import pathlib
 
 import pytest
@@ -19,6 +20,19 @@ def pytest_addoption(parser):
         default=False,
         help="Portion the discovered files instead of individual tests to accelerate collection.",
     )
+    group.addoption(
+        "--portion-functions",
+        action="store_true",
+        default=False,
+        help="When portioning, split within each test function so each function contributes proportionally to the selected set.",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    if config.getoption("--portion-files") and config.getoption("--portion-functions"):
+        raise pytest.UsageError(
+            "Cannot use --portion-files and --portion-functions together; choose one."
+        )
 
 
 def slice_fraction(sequence, i, n):
@@ -54,6 +68,12 @@ def slice_percentage_range(sequence, start, end):
     """
     total = len(sequence)
     return slice(int(round(total * start)), int(total * end) + 1)
+
+
+def _item_base_key(item: pytest.Item) -> str:
+    """Return the test identity without parametrize part, e.g. 'file.py::test_gemm'."""
+    nodeid = item.nodeid
+    return nodeid.split("[", 1)[0] if "[" in nodeid else nodeid
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -123,6 +143,74 @@ def pytest_ignore_collect(collection_path: pathlib.Path, config: pytest.Config):
         return not is_parent_of_allowed
 
 
+def _slice_fraction_per_function(
+    sequence, i, n, group_index: int = 0, small_offset: int | None = None
+):
+    """
+    Split a sequence in n portions for function-level slicing.
+    When total < n: if small_offset is set, treat this group as part of a global
+    "small groups" list and assign portion (small_offset + k) % n + 1 (round-robin
+    across all small groups). When total >= n, use same ranges as slice_fraction.
+    """
+    total = len(sequence)
+    if total == 0:
+        return type(sequence)()
+    per_slice = total // n
+    if not per_slice:
+        # Fewer items than n: use global small_offset so all small groups are
+        # concatenated and assigned to portions 1..n in round-robin order
+        base = small_offset if small_offset is not None else group_index
+        result = type(sequence)(
+            sequence[k] for k in range(total) if ((base + k) % n) + 1 == i
+        )
+        return result
+    # total >= n: same logic as slice_fraction
+    ranges = [[j, j + per_slice] for j in range(0, total, per_slice)]
+    if total % n != 0:
+        ranges = ranges[:-1]
+        ranges[-1][1] = None
+    portion_range = dict(enumerate(ranges, 1))[i]
+    return sequence[slice(*portion_range)]
+
+
+def _portion_items(
+    items,
+    portion: str,
+    per_function: bool = False,
+    group_index: int = 0,
+    small_offset: int | None = None,
+):
+    """Apply portion string to a list of items; returns (selected, deselected).
+    When per_function and len(items) < n, use small_offset for global round-robin
+    across all small groups."""
+    deselected = []
+    if "/" in portion:
+        i, n = [int(x) for x in portion.split("/")]
+        if per_function and len(items) < n:
+            selected = _slice_fraction_per_function(
+                items, i, n, group_index, small_offset
+            )
+            for range_number in range(1, n + 1):
+                if range_number != i:
+                    deselected.extend(
+                        _slice_fraction_per_function(
+                            items, range_number, n, group_index, small_offset
+                        )
+                    )
+        else:
+            selected = slice_fraction(items, i, n)
+            for range_number in range(1, n + 1):
+                if range_number != i:
+                    deselected.extend(slice_fraction(items, range_number, n))
+    else:  # ":" in portion
+        start, end = [float(x) for x in portion.split(":")]
+        slice_selected = slice_percentage_range(items, start, end)
+        selected = items[slice_selected]
+        deselected.extend(items[: slice_selected.start])
+        deselected.extend(items[slice_selected.stop :])
+    return selected, deselected
+
+
 def pytest_collection_modifyitems(config, items):
     # Do not ignore tests if we already ignored the files
     if config.getoption("--portion-files"):
@@ -133,26 +221,49 @@ def pytest_collection_modifyitems(config, items):
     except ValueError:
         portion = None
 
-    deselected = []
     if not portion:
         return
 
-    elif "/" in portion:
-        i, n = [int(n) for n in portion.split("/")]
+    if config.getoption("--portion-functions"):
+        # Group by base test identity (e.g. test_compare1 vs test_compare2)
+        groups = {}
+        for item in items:
+            key = _item_base_key(item)
+            groups.setdefault(key, []).append(item)
+        n_portions = (
+            int(portion.split("/")[1]) if (portion and "/" in portion) else None
+        )
+        # All groups with len < n: assign items globally in round-robin 1,2,...,n
+        sorted_keys = sorted(groups.keys())
+        lengths = [len(groups[k]) for k in sorted_keys]
+        is_small = [n_portions and L < n_portions for L in lengths]
+        small_lengths = [L for L, s in zip(lengths, is_small) if s]
+        cumsum = [0] + list(itertools.accumulate(small_lengths))
+        num_small_before = list(
+            itertools.accumulate([1 if s else 0 for s in is_small], initial=0)
+        )[:-1]
+        small_offsets = {
+            key: cumsum[num_small_before[i]] if is_small[i] else None
+            for i, key in enumerate(sorted_keys)
+        }
+        # Assign items to portions
+        selected = []
+        deselected = []
+        for group_index, key in enumerate(sorted_keys):
+            group_items = groups[key]
+            sel, des = _portion_items(
+                group_items,
+                portion,
+                per_function=True,
+                group_index=group_index,
+                small_offset=small_offsets.get(key),
+            )
+            selected.extend(sel)
+            deselected.extend(des)
+        items[:] = selected
+        config.hook.pytest_deselected(items=deselected)
+        return
 
-        selected = slice_fraction(items, i, n)
-        for range_number in range(1, n + 1):
-            if range_number == i:
-                continue
-
-            deselected.extend(slice_fraction(items, range_number, n))
-    elif ":" in portion:
-        start, end = [float(n) for n in portion.split(":")]
-
-        slice_selected = slice_percentage_range(items, start, end)
-        selected = items[slice_selected]
-        deselected.extend(items[: slice_selected.start])
-        deselected.extend(items[slice_selected.stop :])
-
+    selected, deselected = _portion_items(items, portion)
     items[:] = selected
     config.hook.pytest_deselected(items=deselected)

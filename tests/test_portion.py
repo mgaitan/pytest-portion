@@ -72,6 +72,17 @@ def test_select_fraction(testdir, portion, selected, expected):
     assert expected in result.outlines[-1]
 
 
+def test_portion_files_and_functions_mutually_exclusive(pytester):
+    """--portion-files and --portion-functions cannot be used together."""
+    pytester.makepyfile("def test_foo(): pass")
+    result = pytester.runpytest(
+        "--portion", "1/2", "--portion-files", "--portion-functions"
+    )
+    assert result.ret != 0
+    combined = result.stdout.str() + result.stderr.str()
+    assert "Cannot use --portion-files and --portion-functions together" in combined
+
+
 def test_portion_files(pytester):
     files = {}
     for i in range(10):
@@ -90,6 +101,154 @@ def test_portion_files(pytester):
         "We expect to collect 10 items because we want to collect the 5 of 10 files and each file has 2 tests. "
         "5 * 2 = 10 tests"
     )
+
+
+@pytest.mark.parametrize("portion", ["1/2", "2/2"])
+def test_portion_functions_large_groups(testdir, portion):
+    """With --portion-functions, each test function gets portioned separately so 1/2 gives half from test_compare1 and half from test_compare2."""
+    testdir.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.parametrize("x", [1, 2, 3, 4])
+        def test_compare1(x):
+            assert x >= 1
+
+        @pytest.mark.parametrize("x", [10, 20, 30, 40, 50])
+        def test_compare2(x):
+            assert x >= 10
+        """
+    )
+    # 1/2: should get 2 test_gemm + 2 test_gemm_schedule = 4 items
+    result = testdir.runpytest("-v", "--portion", portion, "--portion-functions")
+    result.stdout.fnmatch_lines("*collected 9 items*")
+    # First portion: first half of test_gemm (2) and first half of test_gemm_schedule (2)
+    out = result.stdout.str()
+    if portion == "1/2":
+        assert "test_compare1[1]" in out and "test_compare1[2]" in out
+        assert "test_compare2[10]" in out and "test_compare2[20]" in out
+        assert "4 passed" in result.outlines[-1]
+        assert "5 deselected" in result.outlines[-1]
+    else:
+        assert "test_compare1[3]" in out and "test_compare1[4]" in out
+        assert (
+            "test_compare2[30]" in out
+            and "test_compare2[40]" in out
+            and "test_compare2[50]" in out
+        )
+        assert "5 passed" in result.outlines[-1]
+        assert "4 deselected" in result.outlines[-1]
+
+
+@pytest.mark.parametrize("portion", ["1/2", "2/2"])
+def test_portion_functions_single_case_each(testdir, portion):
+    """With --portion-functions, each function contributes proportionally: 3 functions
+    with 1 case each and 2 portions → portion 1 gets 2 (test_a, test_c), portion 2 gets 1 (test_b)."""
+    testdir.makepyfile(
+        """
+        import pytest
+
+        def test_a():
+            assert True
+
+        def test_b():
+            assert True
+
+        def test_c():
+            assert True
+        """
+    )
+    result = testdir.runpytest("-v", "--portion", portion, "--portion-functions")
+    result.stdout.fnmatch_lines("*collected 3 items*")
+    out = result.stdout.str()
+    if portion == "1/2":
+        assert "test_a" in out and "test_c" in out
+        assert "2 passed" in result.outlines[-1]
+        assert "1 deselected" in result.outlines[-1]
+    else:
+        assert "test_b" in out
+        assert "1 passed" in result.outlines[-1]
+        assert "2 deselected" in result.outlines[-1]
+
+
+@pytest.mark.parametrize("portion", ["1/3", "2/3", "3/3"])
+def test_portion_functions_three_portions(testdir, portion):
+    """With --portion-functions, 3 functions (test_a 2, test_b 2, test_c 3), 3 portions:
+    small groups (len<n) as a whole round-robin 1,2,3 → 1/3: a1,b4,c5; 2/3: a2,c6; 3/3: b3,c7."""
+    testdir.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.parametrize("x", [1, 2])
+        def test_a(x):
+            assert True
+
+        @pytest.mark.parametrize("x", [3, 4])
+        def test_b(x):
+            assert True
+
+        @pytest.mark.parametrize("x", [5, 6, 7])
+        def test_c(x):
+            assert True
+        """
+    )
+    result = testdir.runpytest("-v", "--portion", portion, "--portion-functions")
+    result.stdout.fnmatch_lines("*collected 7 items*")
+    out = result.stdout.str()
+    if portion == "1/3":
+        assert "test_a[1]" in out and "test_b[4]" in out and "test_c[5]" in out
+        assert "3 passed" in result.outlines[-1]
+        assert "4 deselected" in result.outlines[-1]
+    elif portion == "2/3":
+        assert "test_a[2]" in out and "test_c[6]" in out
+        assert "2 passed" in result.outlines[-1]
+        assert "5 deselected" in result.outlines[-1]
+    else:
+        assert "test_b[3]" in out and "test_c[7]" in out
+        assert "2 passed" in result.outlines[-1]
+        assert "5 deselected" in result.outlines[-1]
+
+
+@pytest.mark.parametrize("portion", ["1/4", "2/4", "3/4", "4/4"])
+def test_portion_functions_four_portions(testdir, portion):
+    """With --portion-functions, 3 functions (test_a 2, test_b 2, test_c 4), 4 portions:
+    small groups round-robin 1..4 → 1/4: a1,c5; 2/4: a2,c6; 3/4: b3,c7; 4/4: b4,c8."""
+    testdir.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.parametrize("x", [1, 2])
+        def test_a(x):
+            assert True
+
+        @pytest.mark.parametrize("x", [3, 4])
+        def test_b(x):
+            assert True
+
+        @pytest.mark.parametrize("x", [5, 6, 7, 8])
+        def test_c(x):
+            assert True
+        """
+    )
+    result = testdir.runpytest("-v", "--portion", portion, "--portion-functions")
+    result.stdout.fnmatch_lines("*collected 8 items*")
+    out = result.stdout.str()
+    if portion == "1/4":
+        assert "test_a[1]" in out and "test_c[5]" in out
+        assert "2 passed" in result.outlines[-1]
+        assert "6 deselected" in result.outlines[-1]
+    elif portion == "2/4":
+        assert "test_a[2]" in out and "test_c[6]" in out
+        assert "2 passed" in result.outlines[-1]
+        assert "6 deselected" in result.outlines[-1]
+    elif portion == "3/4":
+        assert "test_b[3]" in out and "test_c[7]" in out
+        assert "2 passed" in result.outlines[-1]
+        assert "6 deselected" in result.outlines[-1]
+    else:
+        assert "test_b[4]" in out and "test_c[8]" in out
+        assert "2 passed" in result.outlines[-1]
+        assert "6 deselected" in result.outlines[-1]
 
 
 def test_portion_files_run_all_tests(pytester):
